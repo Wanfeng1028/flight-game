@@ -5,7 +5,7 @@
 // Usage outside the grader container:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
@@ -13,9 +13,14 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const repoRoot = fileURLToPath(new URL('.', import.meta.url));
 const destination = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
+// Empty the output directory without removing the directory itself: the
+// grader runs as an unprivileged user with a writable /output whose parent
+// is not writable, so rmdir on the directory itself fails with EACCES.
 function freshDir(path) {
-  rmSync(path, { recursive: true, force: true });
   mkdirSync(path, { recursive: true });
+  for (const entry of readdirSync(path)) {
+    rmSync(join(path, entry), { recursive: true, force: true });
+  }
 }
 
 function copyTree(from, to) {
